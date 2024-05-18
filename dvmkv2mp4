@@ -195,8 +195,14 @@ for f in *.${SRC_FORMAT};do
   inputbase=${input%.${SRC_FORMAT}}
   ffprobe_source_info=$(ffprobe "$input" 2>&1 | grep DOVI | grep -v comment | sed s/://g)
   short_info=$(mediainfo "$input" |awk '/Text #1/{exit}1' | grep -i "^video\|^audio\|format\|commercial\|lang\|title" | cut -f2 -d":" | sed s/,//g | sed s/^Video/\ \|\ Video\ -\ /g | sed s/^Audio/\ \|\ Audio\ -\ /g)
+  dv=''
   dv=$(mediainfo "$input" | grep 'HDR format.*Dolby Vision')
+  hdr10plus=''
   hdr10plus=$(mediainfo "$input" | grep 'HDR format.*HDR10+')
+  truehd=''
+  truehd="$(mediainfo --Inform="Audio;%Format%" "$input" | grep 'MLP')"
+  dts=''
+  dts="$(mediainfo --Inform="Audio;%Format%" "$input" | grep 'DTS')"
   output=`echo "$input" | $sed "s/\ DV.${SRC_FORMAT}\|\ HDR10+.${SRC_FORMAT}\|\ HDR.${SRC_FORMAT}/.${SRC_FORMAT}/g" | $sed s/\.${SRC_FORMAT}/\ ${DST_SUFFIX}\.${SRC_FORMAT}/g | $sed "s/\ ${DST_SUFFIX} ${DST_SUFFIX}\.${SRC_FORMAT}/\ ${DST_SUFFIX}\.${SRC_FORMAT}/g"`
   output="${DEST_DIR}${output%.${SRC_FORMAT}}"
   if [[ "${SRC_FORMAT}" == "mp4" ]]; then
@@ -244,8 +250,8 @@ for f in *.${SRC_FORMAT};do
   ffendhdr10plus="| $ionc hdr10plus_tool extract -o \"${TEMP_DIR}hdr10plus_metadata.json\" -"
 
   ## AUTODETECT SOURCE TYPE AND CONSTRUCT FFMPEG
-  if [ -z "$hdr10plus" ] && [ -z "$dv" ]; then
-    echo "Not an HDR10+ nor DV source"
+  if [ -z "$hdr10plus" ] && [ -z "$dv" ] && [ -z "$truehd" ] && [ -z "$dts" ]; then
+    echo "Video not an HDR10+ nor DV source and audio not TrueHD nor DTS"
     removelocktemp
     continue
   else
@@ -333,6 +339,22 @@ for f in *.${SRC_FORMAT};do
     }
 }
 EOF
+    elif [ ! -z "$dts" ]; then
+      echo "Converting audio only: DTS(X) to AC3"
+      echo
+      ffmpeg -i "$input" -y -loglevel error -stats -map 0 -c copy -c:a ac3 -b:a 640k "${output}.mkv"
+      exit_code=$?
+      cleanup
+      echo "-------------"
+      continue
+    elif [ ! -z "$truehd" ]; then
+      echo "Converting audio only: DTS(X) to AC3"
+      echo
+      ffmpeg -i "$input" -y -loglevel error -stats -map 0 -c copy -c:a ac3 -b:a 640k "${output}.mkv"
+      exit_code=$?
+      cleanup
+      echo "-------------"
+      continue
     fi
   fi
   # SELECT LANG TRACKS
