@@ -531,10 +531,10 @@ EOF
   echo ""
   if [ "$FFMPEG_REMUX" = 'yes' ]; then
     echo "Muxing to mp4"
-    mp4output="${output}.mp4"
+    mp4output="${TEMP_DIR}${input}-mp4box.mp4"
   else
     echo "Muxing to output file"
-    mp4output="${TEMP_DIR}${input}-mp4box.mp4"
+    mp4output="${output}.mp4"
   fi
   echo ""
   mp4string+=("-tmp \"${TEMP_DIR}\" -brand mp42isom -ab dby1 -tags comment=\"${created_tag}\" -new \"${mp4output}\"")
@@ -547,7 +547,10 @@ EOF
     echo ""
     echo "Muxing to output file"
     echo ""
-    ffmpeg -y -i "$mp4output" -loglevel error -stats -map 0 -c copy -strict experimental "${output}.mp4"
+    ffmpegremuxstring="$ionc ffmpeg -y -i \"${mp4output}\" -loglevel error -stats -map 0 -c copy -strict experimental \"${output}.mp4\""
+    echo ${ffmpegremuxstring[*]}
+    eval ${ffmpegremuxstring[*]}
+    #ffmpeg -y -i "$mp4output" -loglevel error -stats -map 0 -c copy -strict experimental "${output}.mp4"
   fi
   if [ $? -ne 0 ]; then
     exit_code=$?
